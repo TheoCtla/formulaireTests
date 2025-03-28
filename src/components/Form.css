@@ -4,15 +4,52 @@ div {
 }
 
 input {
-    padding: 0.6em 1.2em;
+    padding: 0.5em 1em;
     font-size: 1em;
     font-weight: 500;
     font-family: inherit;
-    margin: 0.3em 0;
-    width: 80%;
+    margin: 0.5em 0;
+    width: 90%;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background-color: #fff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    color: #242424;
 }
 
 button {
-    margin: 0.3em 0;
-    width: 30%;
+    margin-top: 1em;
+    width: 100%;
+    padding: 0.75em;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+button:not(:disabled) {
+    background-color: #4caf50;
+}
+
+button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+button:hover:not(:disabled) {
+    background-color: #43a047;
+}
+
+input::placeholder {
+    color: #242424;
+}
+
+input[type="date"] {
+    color: #242424;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(16%) sepia(0%) saturate(0%) hue-rotate(186deg) brightness(95%) contrast(90%);
 }
