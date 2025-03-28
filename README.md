@@ -1,4 +1,9 @@
-# 📝 Formulaire d'inscription React avec validations & tests
+# Formulaire avec Tests et CI/CD 🧪🚀
+
+Ce projet est un petit formulaire en React permettant à un utilisateur de s’enregistrer, avec validation complète, gestion des erreurs, tests unitaires & d’intégration, et déploiement automatique via GitHub Actions.
+
+## 🔥 Aperçu en ligne  
+👉 [Accéder à l'application] : https://TheoCtla.github.io/formulaireTests
 
 ## 🎯 Objectif
 
