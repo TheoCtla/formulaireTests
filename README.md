@@ -62,7 +62,7 @@ Tests écrits avec **Jest** et **Testing Library** :
 
 ```bash
 npm run test
-npm run test -- --coverage
+npm run test:coverage
 ```
 ## 📦 Strucure du projet
 src/
