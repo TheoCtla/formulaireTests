@@ -32,3 +32,8 @@ jobs:
         with:
           personal_token: ${{ secrets.ACTIONS_DEPLOY_TOKEN }}
           publish_dir: ./dist
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v2
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
