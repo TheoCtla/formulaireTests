@@ -2,6 +2,8 @@ describe('Formulaire d\'inscription', () => {
     const baseUrl = 'http://localhost:3000';
 
     beforeEach(() => {
+        // Nettoyer la base avant chaque test
+        cy.request('POST', 'http://localhost:8000/test/cleanup');
         cy.visit(baseUrl);
     });
 
@@ -14,8 +16,8 @@ describe('Formulaire d\'inscription', () => {
         cy.get('input[name="postalCode"]').type('75000');
         cy.get('button[type="submit"]').click();
 
-        cy.contains('✅ Formulaire enregistré avec succès !');
-        cy.contains('John Doe — john.doe@example.com — Paris (75000)');
+        cy.contains('✅ Formulaire enregistré avec succès !').should('be.visible');
+        cy.contains('John Doe — john.doe@example.com — Paris (75000)').should('be.visible');
     });
 
     it('Essayer de s\'inscrire avec des mauvais champs', () => {
@@ -38,4 +40,4 @@ describe('Formulaire d\'inscription', () => {
         cy.visit(`${baseUrl}/fake-url`);
         cy.url().should('eq', `${baseUrl}/`);
     });
-}); 
+});

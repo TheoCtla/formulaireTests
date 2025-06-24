@@ -33,25 +33,7 @@ const Form: React.FC = () => {
     const [isFormValid, setIsFormValid] = useState(false);
     const [userList, setUserList] = useState<User[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-    };
-
-    useEffect(() => {
-        const allFilled = Object.values(formData).every((val) => val.trim() !== '');
-        setIsFormValid(allFilled);
-    }, [formData]);
-
-    useEffect(() => {
-        fetch(`${API_URL}/users/`)
-            .then(res => res.json())
-            .then(data => {
-                setUserList(data);
-            })
-            .catch(err => console.error('Erreur chargement utilisateurs', err));
-    }, []);
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
     const validate = () => {
         const newErrors: { [key: string]: string } = {};
@@ -66,11 +48,54 @@ const Form: React.FC = () => {
         return newErrors;
     };
 
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+
+        // Nouvelle validation en live
+        const newFormData = { ...formData, [name]: value };
+        const validationErrors = validateFormData(newFormData);
+        setErrors(validationErrors);
+    };
+
+    const validateFormData = (data: typeof formData) => {
+        const newErrors: { [key: string]: string } = {};
+
+        if (!isValidName(data.firstName)) newErrors.firstName = 'Prénom invalide.';
+        if (!isValidName(data.lastName)) newErrors.lastName = 'Nom invalide.';
+        if (!isValidEmail(data.email)) newErrors.email = 'Email invalide.';
+        if (!isAdult(data.birthDate)) newErrors.birthDate = 'Vous devez avoir au moins 18 ans.';
+        if (!isValidName(data.city)) newErrors.city = 'Ville invalide.';
+        if (!isValidPostalCode(data.postalCode)) newErrors.postalCode = 'Code postal invalide.';
+
+        return newErrors;
+    };
+
+    useEffect(() => {
+        const allFilled = Object.values(formData).every((val) => val.trim() !== '');
+        setIsFormValid(allFilled);
+    }, [formData]);
+
+    const fetchUsers = () => {
+        fetch(`${API_URL}/users/`)
+            .then(res => res.json())
+            .then(data => {
+                setUserList(data);
+            })
+            .catch(err => console.error('Erreur chargement utilisateurs', err));
+    };
+
+    useEffect(() => {
+        fetchUsers();
+    }, []);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (isSubmitting) return;
         setIsSubmitting(true);
-        const validationErrors = validate();
+        setSuccessMessage(null);
+
+        const validationErrors = validateFormData(formData);
 
         if (Object.keys(validationErrors).length === 0) {
             try {
@@ -89,13 +114,11 @@ const Form: React.FC = () => {
                     }),
                 });
 
+                const data = await response.json(); // Ajouté pour bien attendre la réponse
+
                 if (response.ok) {
-                    await fetch(`${API_URL}/users/`)
-                        .then(res => res.json())
-                        .then(data => setUserList(data));
-
-                    alert('✅ Formulaire enregistré avec succès !');
-
+                    await fetchUsers();
+                    setSuccessMessage('✅ Formulaire enregistré avec succès !');
                     setFormData({
                         firstName: '',
                         lastName: '',
@@ -106,15 +129,15 @@ const Form: React.FC = () => {
                     });
                     setErrors({});
                 } else {
-                    alert('❌ Erreur lors de l\'envoi des données.');
+                    setSuccessMessage('❌ Erreur lors de l\'envoi des données.');
                 }
             } catch (error) {
                 console.error('Erreur:', error);
-                alert('❌ Une erreur est survenue.');
+                setSuccessMessage('❌ Une erreur est survenue.');
             }
         } else {
             setErrors(validationErrors);
-            alert('❌ Erreurs dans le formulaire. Corrige-les.');
+            setSuccessMessage('❌ Erreurs dans le formulaire. Corrige-les.');
         }
         setIsSubmitting(false);
     };
@@ -160,6 +183,8 @@ const Form: React.FC = () => {
 
                 <button type="submit" disabled={!isFormValid || isSubmitting}>S'enregistrer</button>
             </form>
+
+            {successMessage && <p style={{ color: successMessage.startsWith('✅') ? 'green' : 'red' }}>{successMessage}</p>}
 
             <h2>Liste des inscrits</h2>
             <ul>
