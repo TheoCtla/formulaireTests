@@ -32,6 +32,7 @@ const Form: React.FC = () => {
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
     const [isFormValid, setIsFormValid] = useState(false);
     const [userList, setUserList] = useState<User[]>([]);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -67,6 +68,8 @@ const Form: React.FC = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (isSubmitting) return;
+        setIsSubmitting(true);
         const validationErrors = validate();
 
         if (Object.keys(validationErrors).length === 0) {
@@ -87,7 +90,6 @@ const Form: React.FC = () => {
                 });
 
                 if (response.ok) {
-
                     await fetch(`${API_URL}/users/`)
                         .then(res => res.json())
                         .then(data => setUserList(data));
@@ -114,6 +116,7 @@ const Form: React.FC = () => {
             setErrors(validationErrors);
             alert('❌ Erreurs dans le formulaire. Corrige-les.');
         }
+        setIsSubmitting(false);
     };
 
     return (
@@ -155,7 +158,7 @@ const Form: React.FC = () => {
                     {errors.postalCode && <p style={{ color: 'red' }}>{errors.postalCode}</p>}
                 </div>
 
-                <button type="submit" disabled={!isFormValid}>S’enregistrer</button>
+                <button type="submit" disabled={!isFormValid || isSubmitting}>S'enregistrer</button>
             </form>
 
             <h2>Liste des inscrits</h2>

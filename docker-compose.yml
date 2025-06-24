@@ -1,56 +1,75 @@
-version: '3.8'
+# Common variables
+x-common-variables: &common-variables
+  MYSQL_HOST: ${MYSQL_HOST}
+  MYSQL_DATABASE: ${MYSQL_DATABASE}
+  MYSQL_USER: ${MYSQL_USER}
+  MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+  MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+
+# Specific variables for FastAPI
+x-fastapi-variables: &fastapi-variables
+  <<: *common-variables
+  PORT: ${PORT}
+  ADMIN_EMAIL: ${ADMIN_EMAIL}
+  ADMIN_PASSWORD: ${ADMIN_PASSWORD}
 
 services:
-  mysql:
+  mysql-db:
     image: mysql:8.0
     ports:
       - "3306:3306"
     restart: always
     environment:
-      - MYSQL_ROOT_PASSWORD=rootpassword
-      - MYSQL_DATABASE=formulaire
-      - MYSQL_USER=user
-      - MYSQL_PASSWORD=userpassword
+      <<: *common-variables
     volumes:
-      - mysql-data:/var/lib/mysql
+      - ./sqlfiles/:/docker-entrypoint-initdb.d/
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test: mysqladmin ping -h localhost
+    networks:
+      - app-network
 
   adminer:
     image: adminer
     restart: always
     ports:
       - "8080:8080"
+    networks:
+      - app-network
 
   backend:
     build:
       context: ./backend
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=mysql+mysqlconnector://user:userpassword@mysql:3306/formulaire
+      <<: *fastapi-variables
     volumes:
       - ./backend:/app
     depends_on:
-      mysql:
+      mysql-db:
         condition: service_healthy
     working_dir: /app
-    command: uvicorn app.main:app --proxy-headers --host 0.0.0.0 --port 8000
+    networks:
+      - app-network
 
   frontend:
     build:
       context: ./frontend
       dockerfile: DockerfileReact
     ports:
-      - "3000:80"
+      - "3000:3000"
     environment:
-      - VITE_API_URL=http://backend:8000
+      - VITE_REACT_APP_API_URL=http://localhost:8000
+      - VITE_BASE_PATH=/
     depends_on:
       - backend
-    command: nginx -g 'daemon off;'
+    networks:
+      - app-network
 
 volumes:
   mysql-data:
+
+networks:
+  app-network:
+    driver: bridge
