@@ -1,10 +1,11 @@
 import time
 from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
-import models
-import schemas
-import crud
+from app import models
+from app import schemas
+from app import crud
 
 DATABASE_URL = "mysql+mysqlconnector://user:userpassword@mysql:3306/formulaire"
 
@@ -28,6 +29,15 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
+# Ajouter CORS pour permettre les requêtes depuis le frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # URL de ton frontend React (Vite utilise 5173)
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 def get_db():
     db = SessionLocal()
     try:
@@ -41,7 +51,14 @@ def read_root():
 
 @app.post("/users/", response_model=schemas.UserOut)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    return crud.create_user(db=db, user=user)
+    print(f"🔍 Tentative de création: {user.email}")
+    result = crud.create_user(db=db, user=user)
+    if result is None:
+        print(f"❌ Échec de création pour: {user.email}")
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="Erreur lors de la création de l'utilisateur")
+    print(f"✅ Utilisateur créé: {result.email}")
+    return result
 
 @app.get("/users/", response_model=list[schemas.UserOut])
 def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):

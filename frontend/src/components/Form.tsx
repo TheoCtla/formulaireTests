@@ -8,13 +8,16 @@ import {
 } from '../utils/validations';
 
 type User = {
-    firstName: string;
-    lastName: string;
+    id: number;
+    first_name: string;
+    last_name: string;
     email: string;
-    birthDate: string;
+    birth_date: string;
     city: string;
-    postalCode: string;
+    postal_code: string;
 };
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const Form: React.FC = () => {
     const [formData, setFormData] = useState({
@@ -41,8 +44,12 @@ const Form: React.FC = () => {
     }, [formData]);
 
     useEffect(() => {
-        const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
-        setUserList(storedUsers);
+        fetch(`${API_URL}/users/`)
+            .then(res => res.json())
+            .then(data => {
+                setUserList(data);
+            })
+            .catch(err => console.error('Erreur chargement utilisateurs', err));
     }, []);
 
     const validate = () => {
@@ -58,25 +65,51 @@ const Form: React.FC = () => {
         return newErrors;
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const validationErrors = validate();
 
         if (Object.keys(validationErrors).length === 0) {
-            const users = JSON.parse(localStorage.getItem('users') || '[]');
-            users.push(formData);
-            localStorage.setItem('users', JSON.stringify(users));
-            setUserList(users);
-            alert('✅ Formulaire enregistré avec succès !');
-            setFormData({
-                firstName: '',
-                lastName: '',
-                email: '',
-                birthDate: '',
-                city: '',
-                postalCode: ''
-            });
-            setErrors({});
+            try {
+                const response = await fetch(`${API_URL}/users/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        first_name: formData.firstName,
+                        last_name: formData.lastName,
+                        email: formData.email,
+                        birth_date: formData.birthDate,
+                        city: formData.city,
+                        postal_code: formData.postalCode
+                    }),
+                });
+
+                if (response.ok) {
+
+                    await fetch(`${API_URL}/users/`)
+                        .then(res => res.json())
+                        .then(data => setUserList(data));
+
+                    alert('✅ Formulaire enregistré avec succès !');
+
+                    setFormData({
+                        firstName: '',
+                        lastName: '',
+                        email: '',
+                        birthDate: '',
+                        city: '',
+                        postalCode: ''
+                    });
+                    setErrors({});
+                } else {
+                    alert('❌ Erreur lors de l\'envoi des données.');
+                }
+            } catch (error) {
+                console.error('Erreur:', error);
+                alert('❌ Une erreur est survenue.');
+            }
         } else {
             setErrors(validationErrors);
             alert('❌ Erreurs dans le formulaire. Corrige-les.');
@@ -127,9 +160,9 @@ const Form: React.FC = () => {
 
             <h2>Liste des inscrits</h2>
             <ul>
-                {userList.map((user, index) => (
-                    <li key={index}>
-                        {user.firstName} {user.lastName} — {user.email} — {user.city} ({user.postalCode})
+                {userList.map((user) => (
+                    <li key={user.id}>
+                        {user.first_name} {user.last_name} — {user.email} — {user.city} ({user.postal_code})
                     </li>
                 ))}
             </ul>

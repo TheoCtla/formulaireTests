@@ -1,13 +1,21 @@
 from pydantic import BaseModel
 
 class UserCreate(BaseModel):
-    name: str
+    first_name: str
+    last_name: str
     email: str
+    birth_date: str
+    city: str
+    postal_code: str
 
 class UserOut(BaseModel):
     id: int
-    name: str
+    first_name: str
+    last_name: str
     email: str
+    birth_date: str
+    city: str
+    postal_code: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True

@@ -1,17 +1,23 @@
-services:
+version: '3.8'
 
+services:
   mysql:
     image: mysql:8.0
-    restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
       - "3306:3306"
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpassword
+      - MYSQL_DATABASE=formulaire
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=userpassword
     volumes:
       - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   adminer:
     image: adminer
@@ -20,12 +26,31 @@ services:
       - "8080:8080"
 
   backend:
-    build: ./backend
+    build:
+      context: ./backend
     ports:
       - "8000:8000"
+    environment:
+      - DATABASE_URL=mysql+mysqlconnector://user:userpassword@mysql:3306/formulaire
+    volumes:
+      - ./backend:/app
     depends_on:
-      - mysql
-    restart: always
+      mysql:
+        condition: service_healthy
+    working_dir: /app
+    command: uvicorn app.main:app --proxy-headers --host 0.0.0.0 --port 8000
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: DockerfileReact
+    ports:
+      - "3000:80"
+    environment:
+      - VITE_API_URL=http://backend:8000
+    depends_on:
+      - backend
+    command: nginx -g 'daemon off;'
 
 volumes:
   mysql-data:
