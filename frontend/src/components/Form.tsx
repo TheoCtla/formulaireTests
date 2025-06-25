@@ -6,6 +6,7 @@ import {
     isValidPostalCode,
     isAdult
 } from '../utils/validations';
+import { API_URL } from '../config';
 
 type User = {
     id: number;
@@ -16,8 +17,6 @@ type User = {
     city: string;
     postal_code: string;
 };
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const Form: React.FC = () => {
     const [formData, setFormData] = useState({
@@ -30,33 +29,9 @@ const Form: React.FC = () => {
     });
 
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
-    const [isFormValid, setIsFormValid] = useState(false);
     const [userList, setUserList] = useState<User[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
-
-    const validate = () => {
-        const newErrors: { [key: string]: string } = {};
-
-        if (!isValidName(formData.firstName)) newErrors.firstName = 'Prénom invalide.';
-        if (!isValidName(formData.lastName)) newErrors.lastName = 'Nom invalide.';
-        if (!isValidEmail(formData.email)) newErrors.email = 'Email invalide.';
-        if (!isAdult(formData.birthDate)) newErrors.birthDate = 'Vous devez avoir au moins 18 ans.';
-        if (!isValidName(formData.city)) newErrors.city = 'Ville invalide.';
-        if (!isValidPostalCode(formData.postalCode)) newErrors.postalCode = 'Code postal invalide.';
-
-        return newErrors;
-    };
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-
-        // Nouvelle validation en live
-        const newFormData = { ...formData, [name]: value };
-        const validationErrors = validateFormData(newFormData);
-        setErrors(validationErrors);
-    };
 
     const validateFormData = (data: typeof formData) => {
         const newErrors: { [key: string]: string } = {};
@@ -71,10 +46,14 @@ const Form: React.FC = () => {
         return newErrors;
     };
 
-    useEffect(() => {
-        const allFilled = Object.values(formData).every((val) => val.trim() !== '');
-        setIsFormValid(allFilled);
-    }, [formData]);
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        const newFormData = { ...formData, [name]: value };
+
+        setFormData(newFormData);
+        const validationErrors = validateFormData(newFormData);
+        setErrors(validationErrors);
+    };
 
     const fetchUsers = () => {
         fetch(`${API_URL}/users/`)
@@ -108,13 +87,15 @@ const Form: React.FC = () => {
                         first_name: formData.firstName,
                         last_name: formData.lastName,
                         email: formData.email,
-                        birth_date: formData.birthDate,
+                        birth_date: new Date(formData.birthDate).toISOString().split('T')[0],
                         city: formData.city,
                         postal_code: formData.postalCode
                     }),
                 });
 
-                const data = await response.json(); // Ajouté pour bien attendre la réponse
+                const data = await response.json();
+
+                console.log('DEBUG POST /users/ response:', response.status, data);
 
                 if (response.ok) {
                     await fetchUsers();
@@ -142,46 +123,48 @@ const Form: React.FC = () => {
         setIsSubmitting(false);
     };
 
+    const isFormValid = Object.keys(errors).length === 0 && Object.values(formData).every(value => value !== '');
+
     return (
         <>
             <form onSubmit={handleSubmit}>
                 <div>
                     <label htmlFor="firstName">Prénom</label>
-                    <input id="firstName" name="firstName" value={formData.firstName} onChange={handleChange} />
-                    {errors.firstName && <p style={{ color: 'red' }}>{errors.firstName}</p>}
+                    <input id="firstName" name="firstName" value={formData.firstName} onChange={handleChange} data-cy="firstName" />
+                    {errors.firstName && <p data-cy="error-firstName" style={{ color: 'red' }}>{errors.firstName}</p>}
                 </div>
 
                 <div>
                     <label htmlFor="lastName">Nom</label>
-                    <input id="lastName" name="lastName" value={formData.lastName} onChange={handleChange} />
-                    {errors.lastName && <p style={{ color: 'red' }}>{errors.lastName}</p>}
+                    <input id="lastName" name="lastName" value={formData.lastName} onChange={handleChange} data-cy="lastName" />
+                    {errors.lastName && <p data-cy="error-lastName" style={{ color: 'red' }}>{errors.lastName}</p>}
                 </div>
 
                 <div>
                     <label htmlFor="email">Email</label>
-                    <input id="email" name="email" value={formData.email} onChange={handleChange} />
-                    {errors.email && <p style={{ color: 'red' }}>{errors.email}</p>}
+                    <input id="email" name="email" value={formData.email} onChange={handleChange} data-cy="email" />
+                    {errors.email && <p data-cy="error-email" style={{ color: 'red' }}>{errors.email}</p>}
                 </div>
 
                 <div>
                     <label htmlFor="birthDate">Date de naissance</label>
-                    <input id="birthDate" type="date" name="birthDate" value={formData.birthDate} onChange={handleChange} />
-                    {errors.birthDate && <p style={{ color: 'red' }}>{errors.birthDate}</p>}
+                    <input id="birthDate" type="date" name="birthDate" value={formData.birthDate} onChange={handleChange} data-cy="birthDate" />
+                    {errors.birthDate && <p data-cy="error-birthDate" style={{ color: 'red' }}>{errors.birthDate}</p>}
                 </div>
 
                 <div>
                     <label htmlFor="city">Ville</label>
-                    <input id="city" name="city" value={formData.city} onChange={handleChange} />
-                    {errors.city && <p style={{ color: 'red' }}>{errors.city}</p>}
+                    <input id="city" name="city" value={formData.city} onChange={handleChange} data-cy="city" />
+                    {errors.city && <p data-cy="error-city" style={{ color: 'red' }}>{errors.city}</p>}
                 </div>
 
                 <div>
                     <label htmlFor="postalCode">Code Postal</label>
-                    <input id="postalCode" name="postalCode" value={formData.postalCode} onChange={handleChange} />
-                    {errors.postalCode && <p style={{ color: 'red' }}>{errors.postalCode}</p>}
+                    <input id="postalCode" name="postalCode" value={formData.postalCode} onChange={handleChange} data-cy="postalCode" />
+                    {errors.postalCode && <p data-cy="error-postalCode" style={{ color: 'red' }}>{errors.postalCode}</p>}
                 </div>
 
-                <button type="submit" disabled={!isFormValid || isSubmitting}>S'enregistrer</button>
+                <button type="submit" disabled={!isFormValid || isSubmitting} data-cy="submit">S'enregistrer</button>
             </form>
 
             {successMessage && <p style={{ color: successMessage.startsWith('✅') ? 'green' : 'red' }}>{successMessage}</p>}

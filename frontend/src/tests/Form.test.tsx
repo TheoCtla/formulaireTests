@@ -1,33 +1,53 @@
-import { render, screen } from '@testing-library/react';
+// src/tests/Form.test.tsx
+
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import Form from '../components/Form';
 import { calculateAge, isValidPostalCode, isValidName, isValidEmail } from "../utils/validations";
-import userEvent from '@testing-library/user-event';
+
+jest.mock('../config', () => ({
+    API_URL: 'http://mocked-api-url.com'
+}));
+
+beforeEach(() => {
+    // Mock fetch pour GET /users
+    global.fetch = jest.fn(() =>
+        Promise.resolve({
+            json: () => Promise.resolve([]),
+            ok: true
+        })
+    ) as jest.Mock;
+});
+
+afterEach(() => {
+    jest.resetAllMocks();
+});
 
 describe('Form component', () => {
-    beforeEach(() => {
-        // Simule alert() pour éviter les erreurs
-        window.alert = jest.fn();
-    });
-
-    test('Bouton désactivé si champs vides', () => {
+    test('renders form fields correctly', () => {
         render(<Form />);
-        const button = screen.getByRole('button', { name: /s’enregistrer/i });
-        expect(button).toBeDisabled();
+
+        expect(screen.getByLabelText(/^Prénom$/i)).toBeInTheDocument();
+        expect(screen.getByLabelText(/^Nom$/i)).toBeInTheDocument();
+        expect(screen.getByLabelText(/^Email$/i)).toBeInTheDocument();
+        expect(screen.getByLabelText(/^Date de naissance$/i)).toBeInTheDocument();
+        expect(screen.getByLabelText(/^Ville$/i)).toBeInTheDocument();
+        expect(screen.getByLabelText(/^Code Postal$/i)).toBeInTheDocument();
     });
 
-    test('calcule correctement l’âge à partir de la date de naissance', () => {
+    test('calculates age correctly', () => {
         expect(calculateAge('2000-01-01')).toBeGreaterThan(18);
         expect(calculateAge('2020-01-01')).toBeLessThan(18);
     });
 
-    test('valide le format du code postal français', () => {
+    test('validates postal code format', () => {
         expect(isValidPostalCode('06000')).toBe(true);
         expect(isValidPostalCode('abcde')).toBe(false);
         expect(isValidPostalCode('123')).toBe(false);
         expect(isValidPostalCode('75001')).toBe(true);
     });
 
-    test('valide le format des noms, prénoms et villes', () => {
+    test('validates name format', () => {
         expect(isValidName('Jean-Pierre')).toBe(true);
         expect(isValidName('Émilie')).toBe(true);
         expect(isValidName('Nice')).toBe(true);
@@ -36,7 +56,7 @@ describe('Form component', () => {
         expect(isValidName('!Ville')).toBe(false);
     });
 
-    test('valide le format de l’email', () => {
+    test('validates email format', () => {
         expect(isValidEmail('test@example.com')).toBe(true);
         expect(isValidEmail('user.name+tag+sorting@example.com')).toBe(true);
         expect(isValidEmail('invalid-email')).toBe(false);
@@ -44,7 +64,13 @@ describe('Form component', () => {
         expect(isValidEmail('missing.com')).toBe(false);
     });
 
-    test('active le bouton quand tous les champs sont valides', async () => {
+    test('submit button is disabled when form is empty', () => {
+        render(<Form />);
+        const button = screen.getByRole('button', { name: /^s'enregistrer$/i });
+        expect(button).toBeDisabled();
+    });
+
+    test('enables button when form is valid', async () => {
         render(<Form />);
         const user = userEvent.setup();
 
@@ -55,21 +81,21 @@ describe('Form component', () => {
         await user.type(screen.getByLabelText(/ville/i), 'Nice');
         await user.type(screen.getByLabelText(/code postal/i), '06000');
 
-        const button = screen.getByRole('button', { name: /s’enregistrer/i });
+        const button = screen.getByRole('button', { name: /^s'enregistrer$/i });
         expect(button).toBeEnabled();
     });
 
-    test('affiche un toast de succès et vide les champs après soumission', async () => {
+    test('shows success message and resets fields on submit', async () => {
         render(<Form />);
         const user = userEvent.setup();
 
-        const nomInput = screen.getByLabelText(/^Nom\s*$/i);
-        const prenomInput = screen.getByLabelText(/^Prénom\s*$/i);
-        const emailInput = screen.getByLabelText(/email/i);
-        const dobInput = screen.getByLabelText(/date de naissance/i);
-        const villeInput = screen.getByLabelText(/ville/i);
-        const cpInput = screen.getByLabelText(/code postal/i);
-        const button = screen.getByRole('button', { name: /s’enregistrer/i });
+        const nomInput = screen.getByLabelText(/^Nom$/i);
+        const prenomInput = screen.getByLabelText(/^Prénom$/i);
+        const emailInput = screen.getByLabelText(/^Email$/i);
+        const dobInput = screen.getByLabelText(/^Date de naissance$/i);
+        const villeInput = screen.getByLabelText(/^Ville$/i);
+        const cpInput = screen.getByLabelText(/^Code Postal$/i);
+        const button = screen.getByRole('button', { name: /^s'enregistrer$/i });
 
         await user.type(nomInput, 'Durand');
         await user.type(prenomInput, 'Claire');
@@ -78,9 +104,19 @@ describe('Form component', () => {
         await user.type(villeInput, 'Nice');
         await user.type(cpInput, '06000');
 
+        // 👇 Mock fetch pour POST /users
+        (global.fetch as jest.Mock).mockImplementationOnce(() =>
+            Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve({ message: 'OK' })
+            })
+        );
+
         await user.click(button);
 
-        expect(window.alert).toHaveBeenCalledWith('✅ Formulaire enregistré avec succès !');
+        await waitFor(() => {
+            expect(screen.getByText(/✅ Formulaire enregistré avec succès/i)).toBeInTheDocument();
+        });
 
         expect(nomInput).toHaveValue('');
         expect(prenomInput).toHaveValue('');
@@ -90,36 +126,35 @@ describe('Form component', () => {
         expect(cpInput).toHaveValue('');
     });
 
-});
+    test('displays validation errors under invalid fields', async () => {
+        render(<Form />);
+        const user = userEvent.setup();
 
-test('affiche les erreurs en rouge sous les champs invalides', async () => {
-    render(<Form />);
-    const user = userEvent.setup();
+        await user.type(screen.getByLabelText(/^Nom\s*$/i), '123');
+        await user.tab();
 
-    await user.type(screen.getByLabelText(/^Nom\s*$/i), '123');
-    await user.tab();
+        await user.type(screen.getByLabelText(/^Prénom\s*$/i), '@Léo');
+        await user.tab();
 
-    await user.type(screen.getByLabelText(/^Prénom\s*$/i), '@Léo');
-    await user.tab();
+        await user.type(screen.getByLabelText(/email/i), 'invalidemail');
+        await user.tab();
 
-    await user.type(screen.getByLabelText(/email/i), 'invalidemail');
-    await user.tab();
+        await user.type(screen.getByLabelText(/date de naissance/i), '2020-01-01');
+        await user.tab();
 
-    await user.type(screen.getByLabelText(/date de naissance/i), '2020-01-01');
-    await user.tab();
+        await user.type(screen.getByLabelText(/ville/i), '!Nice');
+        await user.tab();
 
-    await user.type(screen.getByLabelText(/ville/i), '!Nice');
-    await user.tab();
+        await user.type(screen.getByLabelText(/code postal/i), 'abc');
+        await user.tab();
 
-    await user.type(screen.getByLabelText(/code postal/i), 'abc');
-    await user.tab();
+        await user.click(screen.getByRole('button', { name: /^s'enregistrer$/i }));
 
-    await user.click(screen.getByRole('button', { name: /s’enregistrer/i }));
-
-    expect(await screen.findAllByText(/Nom invalide/i)).not.toHaveLength(0);
-    expect(screen.getByText(/Prénom invalide/i)).toBeInTheDocument();
-    expect(screen.getByText(/Email invalide/i)).toBeInTheDocument();
-    expect(screen.getByText(/Vous devez avoir au moins 18 ans/i)).toBeInTheDocument();
-    expect(screen.getByText(/Ville invalide/i)).toBeInTheDocument();
-    expect(screen.getByText(/Code postal invalide/i)).toBeInTheDocument();
+        expect(await screen.findByText(/^Nom invalide\.$/i)).toBeInTheDocument();
+        expect(screen.getByText(/^Prénom invalide\.$/i)).toBeInTheDocument();
+        expect(screen.getByText(/^Email invalide\.$/i)).toBeInTheDocument();
+        expect(screen.getByText(/^Vous devez avoir au moins 18 ans\.$/i)).toBeInTheDocument();
+        expect(screen.getByText(/^Ville invalide\.$/i)).toBeInTheDocument();
+        expect(screen.getByText(/^Code postal invalide\.$/i)).toBeInTheDocument();
+    });
 });
