@@ -1,21 +1,23 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, constr, validator
+from datetime import date
 
 class UserCreate(BaseModel):
-    first_name: str
-    last_name: str
-    email: str
-    birth_date: str
-    city: str
+    first_name: constr(min_length=2)
+    last_name: constr(min_length=2)
+    email: EmailStr
+    birth_date: date
+    city: constr(min_length=2)
     postal_code: str
 
-class UserOut(BaseModel):
+    @validator('postal_code')
+    def validate_postal_code(cls, v):
+        import re
+        if not re.match(r"^\d{5}$", v):
+            raise ValueError('Le code postal doit contenir exactement 5 chiffres.')
+        return v
+
+class UserOut(UserCreate):
     id: int
-    first_name: str
-    last_name: str
-    email: str
-    birth_date: str
-    city: str
-    postal_code: str
 
     class Config:
         from_attributes = True

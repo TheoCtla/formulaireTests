@@ -62,6 +62,21 @@ def create_user(user: schemas.UserCreate):
 def read_users(skip: int = 0, limit: int = 100):
     return crud.get_users(skip=skip, limit=limit)
 
+# Ajouté pour Cypress : nettoyage de la table User
+@app.post("/test/cleanup")
+def cleanup_users():
+    cursor = connection.cursor()
+    try:
+        cursor.execute("DELETE FROM users")
+        connection.commit()
+        print("✅ Table users nettoyée")
+        return {"message": "DB nettoyée"}
+    except Error as e:
+        print(f"❌ Erreur lors du cleanup: {e}")
+        raise HTTPException(status_code=500, detail="Erreur lors du cleanup")
+    finally:
+        cursor.close()
+
 @app.get("/{full_path:path}")
 def catch_all(full_path: str):
     print(f"🔄 Redirection de l'URL incorrecte: {full_path}")
